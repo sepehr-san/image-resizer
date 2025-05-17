@@ -94,6 +94,7 @@ canvas {
   color: #333;
   display: none;
   margin-bottom: 30px;
+  font-family: "vazirmatn", sans-serif;
 }
 
 #canvas-container {
