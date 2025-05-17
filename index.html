@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>تغییردهنده سایز</title>
+  <link rel="shortcut icon" href="https://img.icons8.com/emoji/48/straight-ruler-emoji.png">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&family=Rubik:ital,wght@0,300..900;1,300..900&family=Vazirmatn:wght@100..900&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" type="text/css" href="styles.css">
+</head>
+
+<body>
+  <h1>فقط کافیه تصویر رو بکشید و بندازید توی کادر تا فایل نهایی دانلود شه</h1>
+
+  <div class="buttons">
+    <button id="landscapeBtn" class="active">Landscape (1024×576)</button>
+    <button id="mobileBtn">Mobile Screenshot (340×650)</button>
+  </div>
+
+  <div id="paint-mode-container">
+    <input type="checkbox" id="paintModeToggle" />
+    <label for="paintModeToggle">نقاشی</label>
+    <p>با فعال کردن این گزینه می‌تونید با رنگ قرمز روی تصویر نقاشی کنید.</p>
+  </div>
+
+  <div id="drop-zone">Drag & Drop an Image Here or Click to Select</div>
+  <input type="file" accept="image/*" id="file-input" hidden />
+
+  <div id="canvas-container">
+    <canvas id="base-canvas"></canvas>
+    <canvas id="draw-canvas" style="position: absolute; left: 0; top: 0;"></canvas>
+  </div>
+
+  <button id="save-btn">Download Image</button>
+
+</body>
+<script src="script.js"></script>
+
+</html>

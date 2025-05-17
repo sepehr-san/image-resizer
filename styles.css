@@ -1,0 +1,114 @@
+body {
+  font-family: "vazirmatn", sans-serif;
+  background: #f0f0f0;
+  margin: 0;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  direction: rtl;
+}
+
+h1 {
+  text-align: center;
+  font-size: 1.2rem;
+}
+
+.buttons {
+  margin: 20px auto;
+}
+
+.buttons button {
+  margin: 5px 5px;
+  padding: 10px 15px;
+  font-size: 16px;
+  border-radius: 6px;
+  border: solid #f3d470;
+  cursor: pointer;
+  color: #54564d;
+}
+
+.buttons button.active {
+  background-color: #f7c213;
+  color: rgb(50, 50, 50);
+}
+
+#paint-mode-container {
+  font-size: 16px;
+  max-width: 8rem;
+  /* border: solid 1px salmon; */
+}
+
+#paint-mode-container p {
+  font-size: 0.6rem;
+  text-align: justify;
+}
+
+label {
+  color: #333;
+}
+
+#drop-zone {
+  width: 400px;
+  height: 200px;
+  border: 3px dashed #f3d470;
+  border-radius: 10px;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #666;
+  cursor: pointer;
+  transition: background 0.3s;
+  margin: 20px;
+  text-align: center;
+  padding: 10px;
+}
+
+#drop-zone.hover {
+  background: #f7ebc3;
+  border-color: #f3d470;
+}
+
+#canvas-container {
+  position: relative;
+  display: none;
+  margin-bottom: 20px;
+}
+
+canvas {
+  border: 2px solid #333;
+  display: block;
+  image-rendering: auto;
+}
+
+#save-btn {
+  padding: 10px 20px;
+  font-size: 16px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  background-color: #f7c213;
+  color: #333;
+  display: none;
+  margin-bottom: 30px;
+}
+
+#canvas-container {
+  max-width: 100%;
+  overflow-x: visible;
+}
+
+canvas {
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+}
+
+@media only screen and (max-width: 680px) {
+  body {
+    #drop-zone {
+      width: 83vw;
+    }
+  }
+}
