@@ -26,6 +26,7 @@ h1 {
   border: solid #f3d470;
   cursor: pointer;
   color: #54564d;
+  font-family: "vazirmatn", sans-serif;
 }
 
 .buttons button.active {
