@@ -99,7 +99,7 @@ function processImage(file) {
           (blob) => {
             const link = document.createElement("a");
             link.href = URL.createObjectURL(blob);
-            link.download = `ramzinex_${originalFilename}.webp`;
+            link.download = `ramzinex-${originalFilename}.webp`;
             link.click();
           },
           "image/webp",
@@ -176,7 +176,7 @@ saveBtn.addEventListener("click", () => {
     (blob) => {
       const link = document.createElement("a");
       link.href = URL.createObjectURL(blob);
-      link.download = `ramzinex_${originalFilename}.webp`;
+      link.download = `ramzinex-${originalFilename}.webp`;
       link.click();
     },
     "image/webp",
