@@ -84,6 +84,14 @@ canvas {
   image-rendering: auto;
 }
 
+
+#base-canvas {
+  box-sizing: border-box;
+  cursor: move;
+  /* if you like, a faint dashed outline: */
+  border: 3px dashed #f3d470;
+}
+
 #save-btn {
   padding: 10px 20px;
   font-size: 16px;

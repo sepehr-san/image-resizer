@@ -1,185 +1,249 @@
-const dropZone = document.getElementById("drop-zone");
-const fileInput = document.getElementById("file-input");
-const landscapeBtn = document.getElementById("landscapeBtn");
-const mobileBtn = document.getElementById("mobileBtn");
-const saveBtn = document.getElementById("save-btn");
-const paintModeToggle = document.getElementById("paintModeToggle");
+const dropZone         = document.getElementById("drop-zone");
+const fileInput        = document.getElementById("file-input");
+const landscapeBtn     = document.getElementById("landscapeBtn");
+const mobileBtn        = document.getElementById("mobileBtn");
+const saveBtn          = document.getElementById("save-btn");
+const paintModeToggle  = document.getElementById("paintModeToggle");
+const cropModeToggle   = document.getElementById("cropModeToggle");
 
-const baseCanvas = document.getElementById("base-canvas");
-const drawCanvas = document.getElementById("draw-canvas");
-const baseCtx = baseCanvas.getContext("2d");
-const drawCtx = drawCanvas.getContext("2d");
-const canvasContainer = document.getElementById("canvas-container");
+const baseCanvas       = document.getElementById("base-canvas");
+const drawCanvas       = document.getElementById("draw-canvas");
+const baseCtx          = baseCanvas.getContext("2d");
+const drawCtx          = drawCanvas.getContext("2d");
+const canvasContainer  = document.getElementById("canvas-container");
 
-let targetWidth = 1024;
-let targetHeight = 576;
+let targetWidth   = 1024, targetHeight = 576;
 let originalFilename = "image";
 
+// state for cropping
+let img, imgX = 0, imgY = 0, imgScale = 1;
+let isDragging = false, dragStartX = 0, dragStartY = 0;
+
+// state for painting
+let drawing = false;
+
+// ——— Size buttons ———
 landscapeBtn.addEventListener("click", () => {
-  targetWidth = 1024;
-  targetHeight = 576;
+  targetWidth = 1024; targetHeight = 576;
   landscapeBtn.classList.add("active");
   mobileBtn.classList.remove("active");
 });
-
 mobileBtn.addEventListener("click", () => {
-  targetWidth = 340;
-  targetHeight = 650;
+  targetWidth = 340; targetHeight = 650;
   mobileBtn.classList.add("active");
   landscapeBtn.classList.remove("active");
 });
 
+// ——— File drop / select ———
 dropZone.addEventListener("click", () => fileInput.click());
-dropZone.addEventListener("dragover", (e) => {
-  e.preventDefault();
-  dropZone.classList.add("hover");
-});
-dropZone.addEventListener("dragleave", () => {
-  dropZone.classList.remove("hover");
-});
-dropZone.addEventListener("drop", (e) => {
-  e.preventDefault();
-  dropZone.classList.remove("hover");
-  const file = e.dataTransfer.files[0];
-  if (file && file.type.startsWith("image/")) {
-    originalFilename = file.name.replace(/\.[^/.]+$/, "");
-    processImage(file);
-  }
+["dragover","dragleave","drop"].forEach(evt => {
+  dropZone.addEventListener(evt, e => {
+    e.preventDefault();
+    dropZone.classList.toggle("hover", evt==="dragover");
+    if(evt==="drop"){
+      const f = e.dataTransfer.files[0];
+      if(f && f.type.startsWith("image/")){
+        originalFilename = f.name.replace(/\.[^/.]+$/,"");
+        processImage(f);
+      }
+    }
+  });
 });
 fileInput.addEventListener("change", () => {
-  const file = fileInput.files[0];
-  if (file && file.type.startsWith("image/")) {
-    originalFilename = file.name.replace(/\.[^/.]+$/, "");
-    processImage(file);
+  const f = fileInput.files[0];
+  if(f && f.type.startsWith("image/")){
+    originalFilename = f.name.replace(/\.[^/.]+$/,"");
+    processImage(f);
   }
 });
 
-function processImage(file) {
+// ——— Main image loader & setup ———
+function processImage(file){
   const reader = new FileReader();
-  reader.onload = function (event) {
-    const img = new Image();
-    img.onload = function () {
+  reader.onload = e => {
+    img = new Image();
+    img.onload = () => {
       baseCanvas.width = drawCanvas.width = targetWidth;
       baseCanvas.height = drawCanvas.height = targetHeight;
 
-      const imgRatio = img.width / img.height;
-      const canvasRatio = targetWidth / targetHeight;
+      // initial scale & centering
+      const fitRatio = Math.max(targetWidth / img.width, targetHeight / img.height);
+      imgScale = fitRatio;
+      imgX = (targetWidth - img.width * imgScale) / 2;
+      imgY = (targetHeight - img.height * imgScale) / 2;
 
-      let drawWidth, drawHeight, offsetX, offsetY;
+      drawCtx.clearRect(0,0,targetWidth,targetHeight);
 
-      if (imgRatio > canvasRatio) {
-        drawHeight = targetHeight;
-        drawWidth = img.width * (targetHeight / img.height);
-        offsetX = (targetWidth - drawWidth) / 2;
-        offsetY = 0;
+      if(cropModeToggle.checked){
+        enterCropMode();
+      } else if(paintModeToggle.checked){
+        enterPaintMode();
       } else {
-        drawWidth = targetWidth;
-        drawHeight = img.height * (targetWidth / img.width);
-        offsetX = 0;
-        offsetY = (targetHeight - drawHeight) / 2;
-      }
-
-      baseCtx.clearRect(0, 0, targetWidth, targetHeight);
-      drawCtx.clearRect(0, 0, targetWidth, targetHeight);
-      baseCtx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
-
-      if (paintModeToggle.checked) {
-        canvasContainer.style.display = "block";
-        saveBtn.style.display = "inline-block";
-      } else {
-        canvasContainer.style.display = "none";
-        saveBtn.style.display = "none";
-        // Auto download immediately
-        const tempCanvas = document.createElement("canvas");
-        tempCanvas.width = targetWidth;
-        tempCanvas.height = targetHeight;
-        const tempCtx = tempCanvas.getContext("2d");
-        tempCtx.drawImage(baseCanvas, 0, 0);
-        tempCanvas.toBlob(
-          (blob) => {
-            const link = document.createElement("a");
-            link.href = URL.createObjectURL(blob);
-            link.download = `ramzinex-${originalFilename}.webp`;
-            link.click();
-          },
-          "image/webp",
-          0.8
-        );
+        exitAllModesAndAutoDownload();
       }
     };
-    img.src = event.target.result;
+    img.src = e.target.result;
   };
   reader.readAsDataURL(file);
 }
 
-let drawing = false;
+// ——— Draw base image ———
+function redrawBase(){
+  baseCtx.clearRect(0,0,targetWidth,targetHeight);
+  baseCtx.drawImage(img, imgX, imgY, img.width * imgScale, img.height * imgScale);
 
-function getXY(e) {
-  const rect = drawCanvas.getBoundingClientRect();
-  let clientX, clientY;
+  baseCtx.save();
+  baseCtx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+  baseCtx.lineWidth   = 2;
 
-  if (e.touches && e.touches.length > 0) {
-    clientX = e.touches[0].clientX;
-    clientY = e.touches[0].clientY;
-  } else {
-    clientX = e.clientX;
-    clientY = e.clientY;
-  }
-
-  const x = (clientX - rect.left) * (drawCanvas.width / rect.width);
-  const y = (clientY - rect.top) * (drawCanvas.height / rect.height);
-  return [x, y];
+  baseCtx.strokeRect(0, 0, targetWidth, targetHeight);
+  baseCtx.restore();
 }
 
-function startDrawing(e) {
-  if (!paintModeToggle.checked) return;
+// ——— Mode handlers ———
+function enterCropMode(){
+  canvasContainer.style.display = "block";
+  saveBtn.style.display      = "inline-block";
+  baseCanvas.style.display   = "block";
+  drawCanvas.style.display   = "none";
+  redrawBase();
+}
+
+function enterPaintMode(){
+  canvasContainer.style.display = "block";
+  saveBtn.style.display      = "inline-block";
+  baseCanvas.style.display   = "block";
+  drawCanvas.style.display   = "block";
+  redrawBase();
+}
+
+function exitAllModesAndAutoDownload(){
+  canvasContainer.style.display = "none";
+  saveBtn.style.display = "none";
+  redrawBase();
+  const tmp = document.createElement("canvas");
+  tmp.width = targetWidth; tmp.height = targetHeight;
+  tmp.getContext("2d").drawImage(baseCanvas,0,0);
+  tmp.toBlob(blob => {
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `ramzinex-${originalFilename}.webp`;
+    link.click();
+  }, "image/webp", 0.92);
+}
+
+// ——— Utility: map pointer/touch to canvas coords ———
+function getXY(e, canvas){
+  const rect = canvas.getBoundingClientRect();
+  const p = (e.touches && e.touches[0]) || e;
+  return [
+    (p.clientX - rect.left) * (canvas.width / rect.width),
+    (p.clientY - rect.top ) * (canvas.height / rect.height)
+  ];
+}
+
+// ——— Clamp image to cover frame ———
+function clampImagePosition(){
+  const minX = targetWidth - img.width * imgScale;
+  const minY = targetHeight - img.height * imgScale;
+  // X between [minX, 0]
+  imgX = Math.min(0, Math.max(imgX, minX));
+  // Y between [minY, 0]
+  imgY = Math.min(0, Math.max(imgY, minY));
+}
+
+// ——— Crop Drag Handlers on baseCanvas ———
+baseCanvas.addEventListener("mousedown", e => {
+  if(!cropModeToggle.checked) return;
+  isDragging = true;
+  const [x,y] = getXY(e, baseCanvas);
+  dragStartX = x - imgX;
+  dragStartY = y - imgY;
+});
+baseCanvas.addEventListener("mousemove", e => {
+  if(!isDragging || !cropModeToggle.checked) return;
+  const [x,y] = getXY(e, baseCanvas);
+  imgX = x - dragStartX;
+  imgY = y - dragStartY;
+  clampImagePosition();
+  redrawBase();
+});
+["mouseup","mouseleave"].forEach(evt =>
+  baseCanvas.addEventListener(evt, () => {
+    if(cropModeToggle.checked) isDragging = false;
+  })
+);
+// touch
+baseCanvas.addEventListener("touchstart", e => {
+  if(!cropModeToggle.checked) return;
+  e.preventDefault();
+  isDragging = true;
+  const [x,y] = getXY(e, baseCanvas);
+  dragStartX = x - imgX;
+  dragStartY = y - imgY;
+});
+baseCanvas.addEventListener("touchmove", e => {
+  if(!isDragging || !cropModeToggle.checked) return;
+  e.preventDefault();
+  const [x,y] = getXY(e, baseCanvas);
+  imgX = x - dragStartX;
+  imgY = y - dragStartY;
+  clampImagePosition();
+  redrawBase();
+});
+baseCanvas.addEventListener("touchend", () => {
+  if(cropModeToggle.checked) isDragging = false;
+});
+
+// ——— Paint Handlers on drawCanvas ———
+function startPainting(e){
+  if(!paintModeToggle.checked || cropModeToggle.checked) return;
   drawing = true;
   drawCtx.beginPath();
-  const [x, y] = getXY(e);
-  drawCtx.moveTo(x, y);
+  const [x,y] = getXY(e, drawCanvas);
+  drawCtx.moveTo(x,y);
 }
-
-function draw(e) {
-  if (!drawing || !paintModeToggle.checked) return;
-  const [x, y] = getXY(e);
-  drawCtx.strokeStyle = "rgba(255, 0, 0, 0.2)";
-  drawCtx.lineWidth = 10;
-  drawCtx.lineCap = "round";
-  drawCtx.lineTo(x, y);
+function paint(e){
+  if(!drawing || !paintModeToggle.checked || cropModeToggle.checked) return;
+  const [x,y] = getXY(e, drawCanvas);
+  drawCtx.lineTo(x,y);
+  drawCtx.strokeStyle = "rgba(255,0,0,0.2)";
+  drawCtx.lineWidth   = 10;
+  drawCtx.lineCap     = "round";
   drawCtx.stroke();
 }
-
-drawCanvas.addEventListener("mousedown", startDrawing);
-drawCanvas.addEventListener("mousemove", draw);
-drawCanvas.addEventListener("mouseup", () => (drawing = false));
-drawCanvas.addEventListener("mouseleave", () => (drawing = false));
-drawCanvas.addEventListener("touchstart", (e) => {
+drawCanvas.addEventListener("mousedown", startPainting);
+drawCanvas.addEventListener("mousemove", paint);
+["mouseup","mouseleave"].forEach(evt =>
+  drawCanvas.addEventListener(evt, () => drawing = false)
+);
+// touch
+drawCanvas.addEventListener("touchstart", e => {
+  if(cropModeToggle.checked) return;
   e.preventDefault();
-  startDrawing(e);
+  startPainting(e);
 });
-drawCanvas.addEventListener("touchmove", (e) => {
+drawCanvas.addEventListener("touchmove", e => {
+  if(cropModeToggle.checked) return;
   e.preventDefault();
-  draw(e);
+  paint(e);
 });
-drawCanvas.addEventListener("touchend", () => (drawing = false));
+drawCanvas.addEventListener("touchend", () => drawing = false);
 
+// ——— Save Button ———
 saveBtn.addEventListener("click", () => {
-  const finalCanvas = document.createElement("canvas");
-  finalCanvas.width = targetWidth;
-  finalCanvas.height = targetHeight;
-  const finalCtx = finalCanvas.getContext("2d");
-
-  finalCtx.drawImage(baseCanvas, 0, 0);
-  finalCtx.drawImage(drawCanvas, 0, 0);
-
-  finalCanvas.toBlob(
-    (blob) => {
-      const link = document.createElement("a");
-      link.href = URL.createObjectURL(blob);
-      link.download = `ramzinex-${originalFilename}.webp`;
-      link.click();
-    },
-    "image/webp",
-    0.8
-  );
+  const out = document.createElement("canvas");
+  out.width  = targetWidth;
+  out.height = targetHeight;
+  const ctx = out.getContext("2d");
+  ctx.drawImage(baseCanvas, 0,0);
+  if(paintModeToggle.checked && !cropModeToggle.checked){
+    ctx.drawImage(drawCanvas,0,0);
+  }
+  out.toBlob(blob => {
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `ramzinex-${originalFilename}.webp`;
+    link.click();
+  }, "image/webp", 0.92);
 });
