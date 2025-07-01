@@ -92,12 +92,11 @@ function redrawBase(){
   baseCtx.clearRect(0,0,targetWidth,targetHeight);
   baseCtx.drawImage(img, imgX, imgY, img.width * imgScale, img.height * imgScale);
 
-  baseCtx.save();
-  baseCtx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
-  baseCtx.lineWidth   = 2;
-
-  baseCtx.strokeRect(0, 0, targetWidth, targetHeight);
-  baseCtx.restore();
+  //baseCtx.save();
+  //baseCtx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+  //baseCtx.lineWidth   = 2;
+  //baseCtx.strokeRect(0, 0, targetWidth, targetHeight);
+  //baseCtx.restore();
 }
 
 // ——— Mode handlers ———
