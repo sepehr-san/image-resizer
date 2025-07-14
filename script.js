@@ -116,20 +116,23 @@ function enterPaintMode(){
   redrawBase();
 }
 
-function exitAllModesAndAutoDownload(){
+async function exitAllModesAndAutoDownload(){
   canvasContainer.style.display = "none";
   saveBtn.style.display = "none";
   redrawBase();
   const tmp = document.createElement("canvas");
-  tmp.width = targetWidth; tmp.height = targetHeight;
-  tmp.getContext("2d").drawImage(baseCanvas,0,0);
-  tmp.toBlob(blob => {
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `ramzinex-${originalFilename}.webp`;
-    link.click();
-  }, "image/webp", 0.92);
+  tmp.width = targetWidth;
+  tmp.height = targetHeight;
+  tmp.getContext("2d").drawImage(baseCanvas, 0, 0);
+
+  const blob = await exportCanvasBelowSize(tmp);
+
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = `ramzinex-${originalFilename}.webp`;
+  link.click();
 }
+
 
 // ——— Utility: map pointer/touch to canvas coords ———
 function getXY(e, canvas){
@@ -230,19 +233,40 @@ drawCanvas.addEventListener("touchmove", e => {
 drawCanvas.addEventListener("touchend", () => drawing = false);
 
 // ——— Save Button ———
-saveBtn.addEventListener("click", () => {
+saveBtn.addEventListener("click", async () => {
   const out = document.createElement("canvas");
-  out.width  = targetWidth;
+  out.width = targetWidth;
   out.height = targetHeight;
   const ctx = out.getContext("2d");
-  ctx.drawImage(baseCanvas, 0,0);
-  if(paintModeToggle.checked && !cropModeToggle.checked){
-    ctx.drawImage(drawCanvas,0,0);
+  ctx.drawImage(baseCanvas, 0, 0);
+  if (paintModeToggle.checked && !cropModeToggle.checked) {
+    ctx.drawImage(drawCanvas, 0, 0);
   }
-  out.toBlob(blob => {
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `ramzinex-${originalFilename}.webp`;
-    link.click();
-  }, "image/webp", 0.92);
+  const blob = await exportCanvasBelowSize(out);
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = `ramzinex-${originalFilename}.webp`;
+  link.click();
 });
+
+
+// change image quality based on output size
+async function exportCanvasBelowSize(canvas, maxSizeBytes = 100 * 1024, mimeType = "image/webp") {
+  let quality = 1;
+  const minQuality = 0.3;
+  const decrement = 0.05;
+
+  return new Promise((resolve) => {
+    function tryExport() {
+      canvas.toBlob((blob) => {
+        if (blob.size <= maxSizeBytes || quality <= minQuality) {
+          resolve(blob);
+        } else {
+          quality -= decrement;
+          tryExport();
+        }
+      }, mimeType, quality);
+    }
+    tryExport();
+  });
+}
