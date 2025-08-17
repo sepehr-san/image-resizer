@@ -34,13 +34,13 @@ h1 {
   color: rgb(50, 50, 50);
 }
 
-#paint-mode-container {
+#crop-mode-container {
   font-size: 16px;
   max-width: 8rem;
   /* border: solid 1px salmon; */
 }
 
-#paint-mode-container p {
+#crop-mode-container p {
   font-size: 0.6rem;
   text-align: justify;
   margin-top: 0px;
@@ -104,6 +104,9 @@ canvas {
   margin-bottom: 30px;
   font-family: "vazirmatn", sans-serif;
 }
+#save-btn:hover {
+  background-color: #f5c93c;
+}
 
 #canvas-container {
   max-width: 100%;
@@ -115,6 +118,15 @@ canvas {
   height: auto;
   max-width: 100%;
 }
+
+footer p {
+  position: relative;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: .7rem;
+}
+
 
 @media only screen and (max-width: 680px) {
   body {

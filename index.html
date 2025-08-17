@@ -20,29 +20,23 @@
     <button id="mobileBtn">اسکرین‌شات موبایل (340×650)</button>
   </div>
 
-  <div id="paint-mode-container">
-    <input type="checkbox" id="paintModeToggle" />
-    <label for="paintModeToggle">نقاشی</label>
-    <p>با فعال کردن این گزینه می‌تونید با رنگ قرمز روی تصویر نقاشی کنید.</p>
-  </div>
-
-  <div id="paint-mode-container">
+  <div id="crop-mode-container">
     <input type="checkbox" id="cropModeToggle" />
     <label for="cropModeToggle">جابجایی</label>
     <p>با فعال کردن این گزینه می‌تونید تصویر رو در کادر جابجا کنید تا به کراپ مورد نظر برسید.</p>
   </div>
-
 
   <div id="drop-zone">تصویر را در این کادر رها کنید، یا برای آپلود کلیک کنید</div>
   <input type="file" accept="image/*" id="file-input" hidden />
 
   <div id="canvas-container">
     <canvas id="base-canvas"></canvas>
-    <canvas id="draw-canvas" style="position: absolute; left: 0; top: 0;"></canvas>
   </div>
 
   <button id="save-btn">دانلود تصویر</button>
-
+  <footer>
+    <p>ابزاری فوق سری برای تیم محتوای درجه یک رمزینکس</p>
+  </footer>
 </body>
 <script src="script.js"></script>
 
