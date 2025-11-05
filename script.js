@@ -211,7 +211,7 @@ saveBtn.addEventListener("click", async () => {
 });
 
 // change image quality based on output size
-async function exportCanvasBelowSize(canvas, maxSizeBytes = 100 * 1024, mimeType = "image/jpeg") {
+async function exportCanvasBelowSize(canvas, maxSizeBytes = 80 * 1024, mimeType = "image/jpeg") {
   let quality = 1;
   const minQuality = 0.3;
   const decrement = 0.05;
