@@ -4,6 +4,7 @@ const landscapeBtn     = document.getElementById("landscapeBtn");
 const mobileBtn        = document.getElementById("mobileBtn");
 const saveBtn          = document.getElementById("save-btn");
 const cropModeToggle   = document.getElementById("cropModeToggle");
+const compressOnlyToggle = document.getElementById("compressOnlyToggle"); // ✅ NEW
 
 const baseCanvas       = document.getElementById("base-canvas");
 const baseCtx          = baseCanvas.getContext("2d");
@@ -56,7 +57,27 @@ function processImage(file){
   const reader = new FileReader();
   reader.onload = e => {
     img = new Image();
-    img.onload = () => {
+    img.onload = async () => {
+
+      // ✅ Compress-only mode: just shrink file size, keep dimensions
+      if (compressOnlyToggle.checked) {
+        const tmp = document.createElement("canvas");
+        tmp.width = img.width;
+        tmp.height = img.height;
+        const ctx = tmp.getContext("2d");
+        ctx.drawImage(img, 0, 0, img.width, img.height);
+
+        const blob = await exportCanvasBelowSize(tmp);
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.href = url;
+        link.download = `ramzinex-${originalFilename}-compressed.jpg`;
+        link.click();
+        URL.revokeObjectURL(url);
+        return;
+      }
+
+      // ✅ Normal resize / crop logic
       baseCanvas.width = targetWidth;
       baseCanvas.height = targetHeight;
 
@@ -95,17 +116,19 @@ async function exitAllModesAndAutoDownload(){
   canvasContainer.style.display = "none";
   saveBtn.style.display = "none";
   redrawBase();
+  await new Promise(r => requestAnimationFrame(r)); // ✅ small async wait for draw
   const tmp = document.createElement("canvas");
   tmp.width = targetWidth;
   tmp.height = targetHeight;
   tmp.getContext("2d").drawImage(baseCanvas, 0, 0);
 
   const blob = await exportCanvasBelowSize(tmp);
-
   const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
+  const url = URL.createObjectURL(blob);
+  link.href = url;
   link.download = `ramzinex-${originalFilename}.jpg`;
   link.click();
+  URL.revokeObjectURL(url);
 }
 
 // ——— Utility: map pointer/touch to canvas coords ———
@@ -122,9 +145,7 @@ function getXY(e, canvas){
 function clampImagePosition(){
   const minX = targetWidth - img.width * imgScale;
   const minY = targetHeight - img.height * imgScale;
-  // X between [minX, 0]
   imgX = Math.min(0, Math.max(imgX, minX));
-  // Y between [minY, 0]
   imgY = Math.min(0, Math.max(imgY, minY));
 }
 
@@ -149,7 +170,8 @@ baseCanvas.addEventListener("mousemove", e => {
     if(cropModeToggle.checked) isDragging = false;
   })
 );
-// touch
+
+// touch support
 baseCanvas.addEventListener("touchstart", e => {
   if(!cropModeToggle.checked) return;
   e.preventDefault();
@@ -181,9 +203,11 @@ saveBtn.addEventListener("click", async () => {
 
   const blob = await exportCanvasBelowSize(out);
   const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
+  const url = URL.createObjectURL(blob);
+  link.href = url;
   link.download = `ramzinex-${originalFilename}.jpg`;
   link.click();
+  URL.revokeObjectURL(url);
 });
 
 // change image quality based on output size
@@ -199,7 +223,7 @@ async function exportCanvasBelowSize(canvas, maxSizeBytes = 100 * 1024, mimeType
           resolve(blob);
         } else {
           quality -= decrement;
-          tryExport();
+          setTimeout(tryExport, 0); // ✅ yield between compressions
         }
       }, mimeType, quality);
     }
