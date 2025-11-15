@@ -4,7 +4,7 @@ const landscapeBtn     = document.getElementById("landscapeBtn");
 const mobileBtn        = document.getElementById("mobileBtn");
 const saveBtn          = document.getElementById("save-btn");
 const cropModeToggle   = document.getElementById("cropModeToggle");
-const compressOnlyToggle = document.getElementById("compressOnlyToggle"); // ✅ NEW
+const compressOnlyToggle = document.getElementById("compressOnlyToggle");
 
 const baseCanvas       = document.getElementById("base-canvas");
 const baseCtx          = baseCanvas.getContext("2d");
@@ -13,7 +13,6 @@ const canvasContainer  = document.getElementById("canvas-container");
 let targetWidth   = 1024, targetHeight = 576;
 let originalFilename = "image";
 
-// state for cropping
 let img, imgX = 0, imgY = 0, imgScale = 1;
 let isDragging = false, dragStartX = 0, dragStartY = 0;
 
@@ -29,7 +28,7 @@ mobileBtn.addEventListener("click", () => {
   landscapeBtn.classList.remove("active");
 });
 
-// ——— File drop / select ———
+// ——— File selection ———
 dropZone.addEventListener("click", () => fileInput.click());
 ["dragover","dragleave","drop"].forEach(evt => {
   dropZone.addEventListener(evt, e => {
@@ -52,20 +51,19 @@ fileInput.addEventListener("change", () => {
   }
 });
 
-// ——— Main image loader & setup ———
+// ——— Main logic ———
 function processImage(file){
   const reader = new FileReader();
   reader.onload = e => {
     img = new Image();
     img.onload = async () => {
 
-      // ✅ Compress-only mode: just shrink file size, keep dimensions
+      // ——— Compress-only mode ———
       if (compressOnlyToggle.checked) {
         const tmp = document.createElement("canvas");
         tmp.width = img.width;
         tmp.height = img.height;
-        const ctx = tmp.getContext("2d");
-        ctx.drawImage(img, 0, 0, img.width, img.height);
+        tmp.getContext("2d").drawImage(img, 0, 0);
 
         const blob = await exportCanvasBelowSize(tmp);
         const link = document.createElement("a");
@@ -77,11 +75,10 @@ function processImage(file){
         return;
       }
 
-      // ✅ Normal resize / crop logic
+      // ——— Normal resize mode ———
       baseCanvas.width = targetWidth;
       baseCanvas.height = targetHeight;
 
-      // initial scale & centering (cover)
       const fitRatio = Math.max(targetWidth / img.width, targetHeight / img.height);
       imgScale = fitRatio;
       imgX = (targetWidth - img.width * imgScale) / 2;
@@ -98,13 +95,13 @@ function processImage(file){
   reader.readAsDataURL(file);
 }
 
-// ——— Draw base image ———
+// ——— Draw image to canvas ———
 function redrawBase(){
   baseCtx.clearRect(0,0,targetWidth,targetHeight);
   baseCtx.drawImage(img, imgX, imgY, img.width * imgScale, img.height * imgScale);
 }
 
-// ——— Mode handlers ———
+// ——— UI modes ———
 function enterCropMode(){
   canvasContainer.style.display = "block";
   saveBtn.style.display      = "inline-block";
@@ -116,7 +113,8 @@ async function exitAllModesAndAutoDownload(){
   canvasContainer.style.display = "none";
   saveBtn.style.display = "none";
   redrawBase();
-  await new Promise(r => requestAnimationFrame(r)); // ✅ small async wait for draw
+  await new Promise(r => requestAnimationFrame(r));
+
   const tmp = document.createElement("canvas");
   tmp.width = targetWidth;
   tmp.height = targetHeight;
@@ -131,7 +129,7 @@ async function exitAllModesAndAutoDownload(){
   URL.revokeObjectURL(url);
 }
 
-// ——— Utility: map pointer/touch to canvas coords ———
+// ——— Pointer mapping ———
 function getXY(e, canvas){
   const rect = canvas.getBoundingClientRect();
   const p = (e.touches && e.touches[0]) || e;
@@ -141,7 +139,7 @@ function getXY(e, canvas){
   ];
 }
 
-// ——— Clamp image to cover frame ———
+// ——— Boundaries ———
 function clampImagePosition(){
   const minX = targetWidth - img.width * imgScale;
   const minY = targetHeight - img.height * imgScale;
@@ -149,7 +147,7 @@ function clampImagePosition(){
   imgY = Math.min(0, Math.max(imgY, minY));
 }
 
-// ——— Crop Drag Handlers on baseCanvas ———
+// ——— Crop drag ———
 baseCanvas.addEventListener("mousedown", e => {
   if(!cropModeToggle.checked) return;
   isDragging = true;
@@ -171,7 +169,7 @@ baseCanvas.addEventListener("mousemove", e => {
   })
 );
 
-// touch support
+// Touch drag
 baseCanvas.addEventListener("touchstart", e => {
   if(!cropModeToggle.checked) return;
   e.preventDefault();
@@ -193,13 +191,12 @@ baseCanvas.addEventListener("touchend", () => {
   if(cropModeToggle.checked) isDragging = false;
 });
 
-// ——— Save Button ———
+// ——— Save button ———
 saveBtn.addEventListener("click", async () => {
   const out = document.createElement("canvas");
   out.width = targetWidth;
   out.height = targetHeight;
-  const ctx = out.getContext("2d");
-  ctx.drawImage(baseCanvas, 0, 0);
+  out.getContext("2d").drawImage(baseCanvas, 0, 0);
 
   const blob = await exportCanvasBelowSize(out);
   const link = document.createElement("a");
@@ -210,23 +207,43 @@ saveBtn.addEventListener("click", async () => {
   URL.revokeObjectURL(url);
 });
 
-// change image quality based on output size
-async function exportCanvasBelowSize(canvas, maxSizeBytes = 80 * 1024, mimeType = "image/jpeg") {
-  let quality = 1;
-  const minQuality = 0.3;
-  const decrement = 0.05;
 
-  return new Promise((resolve) => {
-    function tryExport() {
-      canvas.toBlob((blob) => {
-        if (blob.size <= maxSizeBytes || quality <= minQuality) {
-          resolve(blob);
-        } else {
-          quality -= decrement;
-          setTimeout(tryExport, 0); // ✅ yield between compressions
-        }
-      }, mimeType, quality);
-    }
-    tryExport();
-  });
+// ————————————————————————————————
+// compression < 100KB
+// ————————————————————————————————
+async function exportCanvasBelowSize(
+  canvas,
+  maxSizeBytes = 100 * 1024,
+  mimeType = "image/jpeg"
+) {
+  let quality = 0.9;
+  const minQuality = 0.3;
+
+  async function canvasToBlob(c, q) {
+    return new Promise(res => c.toBlob(res, mimeType, q));
+  }
+
+  let blob = await canvasToBlob(canvas, quality);
+
+  // ↓ Step 1 — reduce JPEG quality
+  while (blob.size > maxSizeBytes && quality > minQuality) {
+    quality -= 0.1;
+    blob = await canvasToBlob(canvas, quality);
+  }
+
+  // ↓ Step 2 — reduce dimensions if still too big
+  while (blob.size > maxSizeBytes) {
+    const scale = Math.sqrt(maxSizeBytes / blob.size);
+
+    const tmp = document.createElement("canvas");
+    tmp.width  = Math.max(50, canvas.width * scale);   // prevent 0 size
+    tmp.height = Math.max(50, canvas.height * scale);
+
+    tmp.getContext("2d").drawImage(canvas, 0, 0, tmp.width, tmp.height);
+
+    canvas = tmp;
+    blob = await canvasToBlob(canvas, quality);
+  }
+
+  return blob;
 }
